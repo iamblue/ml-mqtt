@@ -1,13 +1,13 @@
 {
   "name": "ml-mqtt",
   "version": "0.0.1",
-  "description": "",
+  "description": "The mqtt package for Microlattice.js",
   "main": "index.js",
   "supportIC":[ "mt7687" ],
   "src": ["./src/ml-mqtt.c"],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": ""
   },
-  "author": "",
-  "license": "ISC"
+  "author": "iamblue",
+  "license": "Apache2"
 }
