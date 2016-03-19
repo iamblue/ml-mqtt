@@ -10,7 +10,7 @@ char topic_buffer[100];
 MQTTMessage message;
 int rc = 0;
 
-DELCARE_HANDLER(mqtt) {
+DELCARE_HANDLER(mqttClient) {
   arrivedcount = 0;
   /* server */
   int server_req_sz = jerry_api_string_to_char_buffer(args_p[0].v_string, NULL, 0);
@@ -143,7 +143,7 @@ DELCARE_HANDLER(mqttSend) {
 }
 
 void ml_mqtt_init(void) {
-  REGISTER_HANDLER(mqtt);
+  REGISTER_HANDLER(mqttClient);
   REGISTER_HANDLER(mqttClose);
   REGISTER_HANDLER(mqttSend);
 }
