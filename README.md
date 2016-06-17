@@ -4,7 +4,7 @@
 
 ``` js
 
-mqttClient(
+__mqttClient(
   host,                 // string
   port,                 // string
   topic,                // string
@@ -27,7 +27,7 @@ global.eventStatus.on('mqttReceive', function(data) {
   print(data);
 });
 
-mqttClient(
+__mqttClient(
   'test.mosquitto.org',
   '1883',
   '7687test',
