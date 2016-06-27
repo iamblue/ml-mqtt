@@ -10,35 +10,41 @@ char topic_buffer[100];
 MQTTMessage message;
 int rc = 0;
 
-DELCARE_HANDLER(mqttClient) {
+#define clientId_buffer  "mqtt-7687-client"
+
+DELCARE_HANDLER(__mqttClient) {
+  char rcv_buf_old[100] = {0};
   arrivedcount = 0;
   /* server */
-  int server_req_sz = jerry_api_string_to_char_buffer(args_p[0].v_string, NULL, 0);
-  server_req_sz *= -1;
-  char server_buffer [server_req_sz+1]; // 不能有*
+  int server_req_sz = -jerry_api_string_to_char_buffer (args_p[0].v_string, NULL, 0);
+  char * server_buffer = (char*) malloc (server_req_sz);
   server_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, (jerry_api_char_t *) server_buffer, server_req_sz);
   server_buffer[server_req_sz] = '\0';
-  /* port */
-  int port_req_sz = jerry_api_string_to_char_buffer(args_p[1].v_string, NULL, 0);
-  port_req_sz *= -1;
-  char port_buffer [port_req_sz+1]; // 不能有*
+
+  // /* port */
+  int port_req_sz = -jerry_api_string_to_char_buffer (args_p[1].v_string, NULL, 0);
+  char * port_buffer = (char*) malloc (port_req_sz);
   port_req_sz = jerry_api_string_to_char_buffer (args_p[1].v_string, (jerry_api_char_t *) port_buffer, port_req_sz);
   port_buffer[port_req_sz] = '\0';
-  /* topic */
-  int topic_req_sz = jerry_api_string_to_char_buffer(args_p[2].v_string, NULL, 0);
-  topic_req_sz *= -1;
-  topic_buffer [topic_req_sz+1]; // 不能有*
+
+  // /* topic */
+  int topic_req_sz = -jerry_api_string_to_char_buffer (args_p[2].v_string, NULL, 0);
+  char * topic_buffer = (char*) malloc (topic_req_sz);
   topic_req_sz = jerry_api_string_to_char_buffer (args_p[2].v_string, (jerry_api_char_t *) topic_buffer, topic_req_sz);
   topic_buffer[topic_req_sz] = '\0';
-  /* clientId */
-  int clientId_req_sz = jerry_api_string_to_char_buffer(args_p[3].v_string, NULL, 0);
-  clientId_req_sz *= -1;
-  char clientId_buffer [clientId_req_sz+1]; // 不能有*
-  clientId_req_sz = jerry_api_string_to_char_buffer (args_p[3].v_string, (jerry_api_char_t *) clientId_buffer, clientId_req_sz);
-  clientId_buffer[clientId_req_sz] = '\0';
-  /* tls */
 
-  printf("topic: %s\n", topic_buffer);
+  // /* clientId */
+  // int clientId_req_sz = -jerry_api_string_to_char_buffer (args_p[3].v_string, NULL, 0);
+  // char * clientId_buffer = (char*) malloc (clientId_req_sz);
+  // clientId_req_sz = jerry_api_string_to_char_buffer (args_p[3].v_string, (jerry_api_char_t *) clientId_buffer, clientId_req_sz);
+  // clientId_buffer[clientId_req_sz] = '\0';
+
+  /* tls */
+  // printf("topic: %s\n", topic_buffer);
+  // printf("clientId: %s\n", clientId_buffer);
+  // printf("server_buffer: %s\n", server_buffer);
+  // printf("port_buffer: %s\n", port_buffer);
+
   unsigned char msg_buf[100];     //generate messages such as unsubscrube
   unsigned char msg_readbuf[100]; //receive messages such as unsubscrube ack
 
@@ -78,12 +84,22 @@ DELCARE_HANDLER(mqttClient) {
 
   void messageArrived(MessageData *md) {
     MQTTMessage *message = md->message;
-    jerry_api_value_t params[0];
-    params[0].type = JERRY_API_DATA_TYPE_STRING;
-    params[0].v_string = jerry_api_create_string (message->payload);
+    char rcv_buf[100] = {0};
+    strcpy(rcv_buf, message->payload);
 
-    jerry_api_call_function(args_p[5].v_object, NULL, false, &params, 1);
-    jerry_api_release_value(&params);
+    if (strcmp(rcv_buf_old, rcv_buf) != 0) {
+      rcv_buf[(size_t)(message->payloadlen)] = '\0';
+
+      jerry_api_value_t params[0];
+      params[0].type = JERRY_API_DATA_TYPE_STRING;
+      params[0].v_string = jerry_api_create_string (rcv_buf);
+
+      * rcv_buf_old = "";
+      strcpy(*rcv_buf_old, rcv_buf);
+
+      jerry_api_call_function(args_p[5].v_object, NULL, false, &params, 1);
+      jerry_api_release_value(&params);
+    }
   }
 
   switch ((int)args_p[4].v_float32) {
@@ -98,28 +114,38 @@ DELCARE_HANDLER(mqttClient) {
       break;
   }
 
-  while (arrivedcount < 1) {
+  printf("Client Subscribed %d\n", rc);
+
+  for(;;) {
     MQTTYield(&c, 1000);
   }
 
   ret_val_p->type = JERRY_API_DATA_TYPE_BOOLEAN;
   ret_val_p->v_bool = true;
-
+  free(server_buffer);
+  free(topic_buffer);
+  free(port_buffer);
+  free(clientId_buffer);
   return true;
 }
 
-DELCARE_HANDLER(mqttClose) {
+DELCARE_HANDLER(__mqttClose) {
   arrivedcount = 1;
   return true;
 }
 
-DELCARE_HANDLER(mqttSend) {
+DELCARE_HANDLER(__mqttSend) {
   char buf[100];
 
-  int msg_req_sz = jerry_api_string_to_char_buffer(args_p[0].v_string, NULL, 0);
-  msg_req_sz *= -1;
-  char msg_buffer [msg_req_sz+1]; // 不能有*
-  msg_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, (jerry_api_char_t *) msg_buffer, msg_req_sz);
+  // int msg_req_sz = jerry_api_string_to_char_buffer(args_p[0].v_string, NULL, 0);
+  // msg_req_sz *= -1;
+  // char msg_buffer [msg_req_sz+1]; // 不能有*
+  // msg_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, (jerry_api_char_t *) msg_buffer, msg_req_sz);
+  // msg_buffer[msg_req_sz] = '\0';
+
+  int msg_req_sz = -jerry_api_string_to_char_buffer (args_p[0].v_string, NULL, 0);
+  char * msg_buffer = (char*) malloc (msg_req_sz);
+  msg_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, msg_buffer, msg_req_sz);
   msg_buffer[msg_req_sz] = '\0';
 
   switch ((int)args_p[1].v_float32) {
@@ -143,7 +169,7 @@ DELCARE_HANDLER(mqttSend) {
 }
 
 void ml_mqtt_init(void) {
-  REGISTER_HANDLER(mqttClient);
-  REGISTER_HANDLER(mqttClose);
-  REGISTER_HANDLER(mqttSend);
+  REGISTER_HANDLER(__mqttClient);
+  REGISTER_HANDLER(__mqttClose);
+  REGISTER_HANDLER(__mqttSend);
 }
