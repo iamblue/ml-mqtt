@@ -17,33 +17,33 @@ DELCARE_HANDLER(__mqttClient) {
   arrivedcount = 0;
   /* server */
   int server_req_sz = -jerry_api_string_to_char_buffer (args_p[0].v_string, NULL, 0);
-  char * server_buffer = (char*) malloc (server_req_sz);
+  char server_buffer[100] = {0};
   server_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, (jerry_api_char_t *) server_buffer, server_req_sz);
   server_buffer[server_req_sz] = '\0';
 
-  // /* port */
+  /* port */
   int port_req_sz = -jerry_api_string_to_char_buffer (args_p[1].v_string, NULL, 0);
   char * port_buffer = (char*) malloc (port_req_sz);
   port_req_sz = jerry_api_string_to_char_buffer (args_p[1].v_string, (jerry_api_char_t *) port_buffer, port_req_sz);
   port_buffer[port_req_sz] = '\0';
 
-  // /* topic */
+  /* topic */
   int topic_req_sz = -jerry_api_string_to_char_buffer (args_p[2].v_string, NULL, 0);
   char * topic_buffer = (char*) malloc (topic_req_sz);
   topic_req_sz = jerry_api_string_to_char_buffer (args_p[2].v_string, (jerry_api_char_t *) topic_buffer, topic_req_sz);
   topic_buffer[topic_req_sz] = '\0';
 
-  // /* clientId */
+  /* clientId */
   // int clientId_req_sz = -jerry_api_string_to_char_buffer (args_p[3].v_string, NULL, 0);
-  // char * clientId_buffer = (char*) malloc (clientId_req_sz);
+  // char clientId_buffer [100] = {0};
   // clientId_req_sz = jerry_api_string_to_char_buffer (args_p[3].v_string, (jerry_api_char_t *) clientId_buffer, clientId_req_sz);
   // clientId_buffer[clientId_req_sz] = '\0';
 
   /* tls */
-  // printf("topic: %s\n", topic_buffer);
-  // printf("clientId: %s\n", clientId_buffer);
-  // printf("server_buffer: %s\n", server_buffer);
-  // printf("port_buffer: %s\n", port_buffer);
+  printf("topic: %s\n", topic_buffer);
+  printf("clientId: %s\n", clientId_buffer);
+  printf("server_buffer: %s\n", server_buffer);
+  printf("port_buffer: %s\n", port_buffer);
 
   unsigned char msg_buf[100];     //generate messages such as unsubscrube
   unsigned char msg_readbuf[100]; //receive messages such as unsubscrube ack
