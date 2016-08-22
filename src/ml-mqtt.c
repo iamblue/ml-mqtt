@@ -1,5 +1,5 @@
 #include <string.h>
-#include "jerry.h"
+#include "jerry-api.h"
 #include "microlattice.h"
 #include "MQTTClient.h"
 #include "./mqtt.h"
@@ -10,40 +10,8 @@ char topic_buffer[100];
 MQTTMessage message;
 int rc = 0;
 
-#define clientId_buffer  "mqtt-7687-client"
-
 DELCARE_HANDLER(__mqttClient) {
-  char rcv_buf_old[100] = {0};
   arrivedcount = 0;
-  /* server */
-  int server_req_sz = -jerry_api_string_to_char_buffer (args_p[0].v_string, NULL, 0);
-  char server_buffer[100] = {0};
-  server_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, (jerry_api_char_t *) server_buffer, server_req_sz);
-  server_buffer[server_req_sz] = '\0';
-
-  /* port */
-  int port_req_sz = -jerry_api_string_to_char_buffer (args_p[1].v_string, NULL, 0);
-  char * port_buffer = (char*) malloc (port_req_sz);
-  port_req_sz = jerry_api_string_to_char_buffer (args_p[1].v_string, (jerry_api_char_t *) port_buffer, port_req_sz);
-  port_buffer[port_req_sz] = '\0';
-
-  /* topic */
-  int topic_req_sz = -jerry_api_string_to_char_buffer (args_p[2].v_string, NULL, 0);
-  char * topic_buffer = (char*) malloc (topic_req_sz);
-  topic_req_sz = jerry_api_string_to_char_buffer (args_p[2].v_string, (jerry_api_char_t *) topic_buffer, topic_req_sz);
-  topic_buffer[topic_req_sz] = '\0';
-
-  /* clientId */
-  // int clientId_req_sz = -jerry_api_string_to_char_buffer (args_p[3].v_string, NULL, 0);
-  // char clientId_buffer [100] = {0};
-  // clientId_req_sz = jerry_api_string_to_char_buffer (args_p[3].v_string, (jerry_api_char_t *) clientId_buffer, clientId_req_sz);
-  // clientId_buffer[clientId_req_sz] = '\0';
-
-  /* tls */
-  printf("topic: %s\n", topic_buffer);
-  printf("clientId: %s\n", clientId_buffer);
-  printf("server_buffer: %s\n", server_buffer);
-  printf("port_buffer: %s\n", port_buffer);
 
   unsigned char msg_buf[100];     //generate messages such as unsubscrube
   unsigned char msg_readbuf[100]; //receive messages such as unsubscrube ack
@@ -54,6 +22,16 @@ DELCARE_HANDLER(__mqttClient) {
   //init mqtt network structure
   NewNetwork(&n);
 
+  jerry_size_t port_req_sz = jerry_get_string_size (args_p[1]);
+  jerry_char_t port_buffer[port_req_sz];
+  jerry_string_to_char_buffer (args_p[1], port_buffer, port_req_sz);
+  port_buffer[port_req_sz] = '\0';
+
+  jerry_size_t server_req_sz = jerry_get_string_size (args_p[0]);
+  jerry_char_t server_buffer[server_req_sz];
+  jerry_string_to_char_buffer (args_p[0], server_buffer, server_req_sz);
+  server_buffer[server_req_sz] = '\0';
+
   rc = ConnectNetwork(&n, server_buffer, port_buffer);
 
   if (rc != 0) {
@@ -63,6 +41,11 @@ DELCARE_HANDLER(__mqttClient) {
 
   //init mqtt client structure
   MQTTClient(&c, &n, 12000, msg_buf, 100, msg_readbuf, 100);
+
+  jerry_size_t clientId_req_sz = jerry_get_string_size (args_p[3]);
+  jerry_char_t clientId_buffer[clientId_req_sz];
+  jerry_string_to_char_buffer (args_p[3], clientId_buffer, clientId_req_sz);
+  clientId_buffer[clientId_req_sz] = '\0';
 
   //mqtt connect req packet header
   data.willFlag = 0;
@@ -80,29 +63,28 @@ DELCARE_HANDLER(__mqttClient) {
     printf("MQTT connect fail,status%d\n", rc);
   }
 
-  printf("Subscribing to %s\n", topic_buffer);
-
   void messageArrived(MessageData *md) {
     MQTTMessage *message = md->message;
-    char rcv_buf[100] = {0};
-    strcpy(rcv_buf, message->payload);
 
-    if (strcmp(rcv_buf_old, rcv_buf) != 0) {
-      rcv_buf[(size_t)(message->payloadlen)] = '\0';
+    jerry_value_t params[0];
+    params[0] = jerry_create_string(message->payload);
 
-      jerry_api_value_t params[0];
-      params[0].type = JERRY_API_DATA_TYPE_STRING;
-      params[0].v_string = jerry_api_create_string (rcv_buf);
+    jerry_value_t this_val = jerry_create_undefined();
+    jerry_value_t ret_val = jerry_call_function (args_p[5], this_val, &params, 1);
 
-      * rcv_buf_old = "";
-      strcpy(*rcv_buf_old, rcv_buf);
-
-      jerry_api_call_function(args_p[5].v_object, NULL, false, &params, 1);
-      jerry_api_release_value(&params);
-    }
+    jerry_release_value(params);
+    jerry_release_value(this_val);
+    jerry_release_value(ret_val);
   }
 
-  switch ((int)args_p[4].v_float32) {
+  jerry_size_t topic_req_sz = jerry_get_string_size (args_p[2]);
+  jerry_char_t topic_buffer[topic_req_sz];
+  jerry_string_to_char_buffer (args_p[2], topic_buffer, topic_req_sz);
+  topic_buffer[topic_req_sz] = '\0';
+
+  printf("Subscribing to %s\n", topic_buffer);
+
+  switch ((int) jerry_get_number_value(args_p[4])) {
     case 0:
       rc = MQTTSubscribe(&c, topic_buffer, QOS0, messageArrived);
       break;
@@ -114,41 +96,32 @@ DELCARE_HANDLER(__mqttClient) {
       break;
   }
 
-  printf("Client Subscribed %d\n", rc);
-
-  for(;;) {
+  while (arrivedcount < 1) {
     MQTTYield(&c, 1000);
   }
 
-  ret_val_p->type = JERRY_API_DATA_TYPE_BOOLEAN;
-  ret_val_p->v_bool = true;
   free(server_buffer);
   free(topic_buffer);
   free(port_buffer);
   free(clientId_buffer);
-  return true;
+
+  return jerry_create_boolean(true);
 }
 
 DELCARE_HANDLER(__mqttClose) {
   arrivedcount = 1;
-  return true;
+  return jerry_create_boolean(true);
 }
 
 DELCARE_HANDLER(__mqttSend) {
   char buf[100];
 
-  // int msg_req_sz = jerry_api_string_to_char_buffer(args_p[0].v_string, NULL, 0);
-  // msg_req_sz *= -1;
-  // char msg_buffer [msg_req_sz+1]; // 不能有*
-  // msg_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, (jerry_api_char_t *) msg_buffer, msg_req_sz);
-  // msg_buffer[msg_req_sz] = '\0';
-
-  int msg_req_sz = -jerry_api_string_to_char_buffer (args_p[0].v_string, NULL, 0);
-  char * msg_buffer = (char*) malloc (msg_req_sz);
-  msg_req_sz = jerry_api_string_to_char_buffer (args_p[0].v_string, msg_buffer, msg_req_sz);
+  jerry_size_t msg_req_sz = jerry_get_string_size (args_p[0]);
+  jerry_char_t msg_buffer[msg_req_sz];
+  jerry_string_to_char_buffer (args_p[0], msg_buffer, msg_req_sz);
   msg_buffer[msg_req_sz] = '\0';
 
-  switch ((int)args_p[1].v_float32) {
+  switch ((int) jerry_get_number_value(args_p[1])) {
     case 0:
       message.qos = QOS0;
       break;
@@ -165,7 +138,8 @@ DELCARE_HANDLER(__mqttSend) {
   message.payload = (void *)msg_buffer;
   message.payloadlen = strlen(msg_buffer) + 1;
   rc = MQTTPublish(&c, topic_buffer, &message);
-  return true;
+
+  return jerry_create_boolean(true);
 }
 
 void ml_mqtt_init(void) {
