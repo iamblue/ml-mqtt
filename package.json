@@ -1,6 +1,6 @@
 {
   "name": "ml-mqtt",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "The mqtt package for Microlattice.js",
   "main": "index.js",
   "supportIC": [
